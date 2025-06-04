@@ -1,0 +1,22 @@
+void sendToMaster(String rfid) {
+  byte startByte = 0xAA;
+  byte endByte = 0xFF;
+
+  String payload = String(DEVICE_ID) + ":" + rfid;
+
+  rs485.write(startByte);
+  rs485.print(payload);
+  rs485.write(endByte);
+
+  Serial.print("Sent to Master: ");
+  Serial.print("0xAA ");
+  Serial.print(payload);
+  Serial.println(" 0xFF");
+}
+
+
+void resetState() {
+  lastRFID = "";
+  esdPassed = false;
+  rfidTime = 0;
+} 
