@@ -1,3 +1,49 @@
+#include <Wiegand.h>
+#include <SoftwareSerial.h>
+
+#define D0_PIN 2
+#define D1_PIN 3
+#define ESD_PIN 7
+#define DEVICE_ID 0x01
+
+SoftwareSerial rs485(11, 12);
+WIEGAND wg;
+String lastRFID = "";
+bool esdPassed = false;
+unsigned long rfidTime = 0;
+unsigned long esdWindow = 20000;
+
+void setup() {
+  Serial.begin(9600);
+  rs485.begin(9600);
+  pinMode(ESD_PIN, INPUT);
+  wg.begin(D0_PIN, D1_PIN);
+  Serial.println("Wiegand ESD + RS485 Node Ready");
+}
+
+void loop() {
+  if (wg.available()) {
+    uint32_t cardCode = wg.getCode();
+    lastRFID = String(cardCode);
+    rfidTime = millis();
+    Serial.println("RFID: " + lastRFID);
+  }
+
+  if (lastRFID != "" && millis() - rfidTime <= esdWindow) {
+    if (digitalRead(ESD_PIN) == HIGH && !esdPassed) {
+      esdPassed = true;
+      Serial.println("ESD Passed for RFID: " + lastRFID);
+      sendToMaster(lastRFID);
+      resetState();
+    }
+  }
+
+  if (lastRFID != "" && millis() - rfidTime > esdWindow) {
+    Serial.println("Timeout for RFID: " + lastRFID);
+    resetState();
+  }
+}
+
 void sendToMaster(String rfid) {
   byte startByte = 0xAA;
   byte endByte = 0xFF;
