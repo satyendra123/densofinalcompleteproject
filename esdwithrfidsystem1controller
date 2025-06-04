@@ -5,6 +5,11 @@
 #define D1_PIN 3
 #define ESD_PIN 7
 #define DEVICE_ID 0x01
+//#define DEVICE_ID 0x01
+//#define DEVICE_ID 0x01
+//#define DEVICE_ID 0x01
+//#define DEVICE_ID 0x01
+//#define DEVICE_ID 0x01
 
 SoftwareSerial rs485(11, 12);
 WIEGAND wg;
