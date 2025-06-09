@@ -1,0 +1,125 @@
+#include <SPI.h>
+#include <Ethernet.h>
+#include <SoftwareSerial.h>
+
+// RS485 pins
+SoftwareSerial rs485(10, 11); // RX, TX for RS485
+
+// Ethernet settings - customize for your network
+byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
+IPAddress ip(192, 168, 1, 177);  // Change to your Arduino IP
+IPAddress gateway(192, 168, 1, 1);
+IPAddress subnet(255, 255, 255, 0);
+
+// API server details
+IPAddress serverIp(192, 168, 1, 100); // Your API server IP
+const uint16_t serverPort = 80;       // HTTP port (usually 80)
+const char* apiPath = "/esd/pass";    // API endpoint path
+
+EthernetClient client;
+
+String inputBuffer = "";
+bool receiving = false;
+
+void setup() {
+  Serial.begin(9600);
+  rs485.begin(9600);
+
+  Serial.println("Initializing Ethernet...");
+  Ethernet.begin(mac, ip, gateway, gateway, subnet);
+
+  delay(1000);
+
+  Serial.print("Ethernet IP: ");
+  Serial.println(Ethernet.localIP());
+
+  Serial.println("Master RS485 + Ethernet API Ready");
+}
+
+void loop() {
+
+void waitForResponse() {
+  inputBuffer = "";
+  receiving = false;
+
+  while (millis() - startTime < responseTimeout) {
+    while (rs485.available()) {
+      char c = rs485.read();
+
+      if (c == (char)0xAA) {
+        inputBuffer = "";
+        receiving = true;
+      } 
+      
+      else if (c == (char)0xFF && receiving) {
+        receiving = false;
+        processMessage(inputBuffer);
+        return;
+      } 
+      
+      else if (receiving) {
+        inputBuffer += c;
+      }
+    }
+  }
+
+  if (inputBuffer == "") {
+    Serial.println("No response received");
+  }
+}
+
+void processMessage(String msg) {
+  int sep = msg.indexOf(':');
+  if (sep != -1) {
+    String deviceId = msg.substring(0, sep);
+    String rfid = msg.substring(sep + 1);
+    Serial.println("Device " + deviceId + " RFID: " + rfid);
+
+    // Send to API
+    if (sendDataToAPI(deviceId, rfid)) {
+      Serial.println("Data sent successfully");
+    } else {
+      Serial.println("Failed to send data");
+    }
+  } else {
+    Serial.println("Invalid response");
+  }
+}
+
+bool sendDataToAPI(String deviceId, String rfid) {
+  if (client.connect(serverIp, serverPort)) {
+    String jsonPayload = "{\"device_id\":\"" + deviceId + "\",\"rfid\":\"" + rfid + "\"}";
+
+    // Compose HTTP POST request
+    client.println("POST " + String(apiPath) + " HTTP/1.1");
+    client.println("Host: " + serverIp.toString());
+    client.println("Content-Type: application/json");
+    client.print("Content-Length: ");
+    client.println(jsonPayload.length());
+    client.println("Connection: close");
+    client.println();
+    client.println(jsonPayload);
+
+    unsigned long timeout = millis();
+    while (client.available() == 0) {
+      if (millis() - timeout > 2000) {
+        Serial.println("Client Timeout");
+        client.stop();
+        return false;
+      }
+    }
+
+    // Read response (optional)
+    while (client.available()) {
+      char c = client.read();
+      // Uncomment below to debug server response
+      // Serial.write(c);
+    }
+
+    client.stop();
+    return true;
+  } else {
+    Serial.println("Connection to API server failed");
+    return false;
+  }
+}
