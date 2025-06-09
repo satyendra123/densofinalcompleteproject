@@ -20,7 +20,7 @@ void setup() {
   Serial.begin(9600);
   rs485.begin(9600);
   pinMode(RS485_CONTROL, OUTPUT);
-  digitalWrite(RS485_CONTROL, LOW);  // Receive mode
+  digitalWrite(RS485_CONTROL, LOW);
 
   Ethernet.begin(mac, ip);
   delay(1000);
@@ -32,7 +32,6 @@ void loop() {
     char c = rs485.read();
     incomingData += c;
 
-    // If we reached the last '|', attempt to process
     if (incomingData.startsWith("|AA") && countPipes(incomingData) == 8 && incomingData.endsWith("|")) {
       Serial.print("Received RS485 Data: ");
       Serial.println(incomingData);
@@ -46,10 +45,7 @@ void loop() {
         Serial.println("Failed to extract RFID");
       }
 
-      // Reset buffer
       incomingData = "";
-
-      // Clear any remaining data in RS485 buffer
       while (rs485.available()) {
         rs485.read(); // discard
       }
@@ -66,7 +62,6 @@ int countPipes(String str) {
   return count;
 }
 
-// Extracts the fourth field (RFID) using indexOf
 String extractRFID(String data) {
   int pos[9];
   int index = 0;
