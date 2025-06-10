@@ -9,7 +9,7 @@
 SoftwareSerial rs485(RS485_RX, RS485_TX);
 
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
-IPAddress ip(192, 168, 1, 177);
+IPAddress ip(192, 168, 1, 155);
 IPAddress server(192, 168, 1, 100);
 
 EthernetClient client;
@@ -21,7 +21,6 @@ void setup() {
   rs485.begin(9600);
   pinMode(RS485_CONTROL, OUTPUT);
   digitalWrite(RS485_CONTROL, LOW);
-
   Ethernet.begin(mac, ip);
   delay(1000);
   Serial.println("System ready...");
@@ -32,7 +31,7 @@ void loop() {
     char c = rs485.read();
     incomingData += c;
 
-    if (incomingData.startsWith("|AA") && countPipes(incomingData) == 8 && incomingData.endsWith("|")) {
+    if (incomingData.startsWith("|AA") && countPipes(incomingData) == 9 && incomingData.endsWith("|")) {
       Serial.print("Received RS485 Data: ");
       Serial.println(incomingData);
 
@@ -53,7 +52,6 @@ void loop() {
   }
 }
 
-
 int countPipes(String str) {
   int count = 0;
   for (int i = 0; i < str.length(); i++) {
@@ -72,20 +70,15 @@ String extractRFID(String data) {
   }
 
   if (index >= 8) {
-    // RFID is between 6th and 7th pipe
-    return data.substring(pos[5] + 1, pos[6]);
+    return data.substring(pos[6] + 1, pos[7]);
   } else {
     return "";
   }
 }
 
-
 void sendToServer(String rfid) {
   if (client.connect(server, 8000)) {
     Serial.println("Connected to server...");
-
-    String postData = "rfid=" + rfid;
-
     String url = "GET /rfid-esd?rfid=" + rfid + " HTTP/1.1";
     client.println(url);
     client.println("Host: 192.168.1.100");
