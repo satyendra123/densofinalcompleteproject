@@ -1,0 +1,63 @@
+#include <SoftwareSerial.h>
+#include <Wiegand.h>
+
+// RS485 pins
+#define RS485_RX       4
+#define RS485_TX       5
+#define RS485_CONTROL  6  // DE and RE tied together
+
+// Wiegand RFID pins
+#define RFID_D0 2
+#define RFID_D1 3
+
+// Create instances
+SoftwareSerial rs485(RS485_RX, RS485_TX);  // RX, TX
+WIEGAND wg;
+
+void setup() {
+  Serial.begin(9600);
+  rs485.begin(9600);
+  wg.begin(RFID_D0, RFID_D1);
+
+  pinMode(RS485_CONTROL, OUTPUT);
+  digitalWrite(RS485_CONTROL, LOW);  // Start in receive mode
+
+  Serial.println("RS485 RFID system ready");
+}
+
+void loop() {
+  // 📥 Check for incoming RS485 data
+  if (rs485.available()) {
+    String received = rs485.readStringUntil('\n');
+    Serial.print("Received over RS485: ");
+    Serial.println(received);
+  }
+
+  // 📤 Send RFID when scanned
+  if (wg.available()) {
+    String rfid = String(wg.getCode());
+    Serial.print("RFID Read: ");
+    Serial.println(rfid);
+
+    sendViaRS485(rfid);
+  }
+}
+
+// 📤 Send string over RS485
+void sendViaRS485(String data) {
+  preTransmission();
+  rs485.println(data);
+  postTransmission();
+}
+
+// 🔁 Enable TX mode
+void preTransmission() {
+  digitalWrite(RS485_CONTROL, HIGH);
+  delayMicroseconds(10);  // Allow time to settle
+}
+
+// 🔁 Back to RX mode
+void postTransmission() {
+  delay(10);  // Wait for data to be sent
+  digitalWrite(RS485_CONTROL, LOW);
+}
