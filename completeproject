@@ -169,7 +169,7 @@ int getStaticDelay(byte deviceId) {
   }
 }
 */
-// working master arduino which receives the rfid data  
+// working master arduino which receives the rfid data and send to the server
 /*
 #include <SPI.h>
 #include <Ethernet.h>
