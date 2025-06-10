@@ -1,0 +1,72 @@
+#include <SPI.h>
+#include <Ethernet.h>
+#include <Wiegand.h>
+
+byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0x01 };
+IPAddress ip(192, 168, 1, 16); // Arduino IP
+EthernetServer server(80);     // Web server
+
+#define D0_PIN 2
+#define D1_PIN 3
+
+WIEGAND wg;
+String lastRFID = "";
+
+void setup() {
+  Serial.begin(9600);
+  Ethernet.begin(mac, ip);
+  delay(1000);
+  server.begin();
+
+  Serial.print("Arduino Web Server running at: ");
+  Serial.println(Ethernet.localIP());
+
+  wg.begin(D0_PIN, D1_PIN);
+}
+
+void loop() {
+  // Read RFID scan
+  if (wg.available()) {
+    uint32_t cardCode = wg.getCode();
+    rfid = String(cardCode);
+    Serial.println("Scanned RFID: " + lastRFID);
+  }
+
+  // Handle incoming request
+  EthernetClient client = server.available();
+  if (client) {
+    String req = "";
+    bool currentLineIsBlank = true;
+
+    while (client.connected()) {
+      if (client.available()) {
+        char c = client.read();
+        req += c;
+        if (c == '\n' && currentLineIsBlank) break;
+        if (c == '\n') currentLineIsBlank = true;
+        else if (c != '\r') currentLineIsBlank = false;
+      }
+    }
+
+    // Serve latest RFID
+    if (req.indexOf("GET /get-rfid") >= 0) {
+      client.println("HTTP/1.1 200 OK");
+      client.println("Content-Type: application/json");
+      client.println("Access-Control-Allow-Origin: *");
+      client.println("Connection: close");
+      client.println();
+      client.print("{\"rfid\":\"");
+      client.print(rfid);
+      client.println("\"}");
+    } else {
+      client.println("HTTP/1.1 404 Not Found");
+      client.println("Content-Type: text/plain");
+      client.println("Connection: close");
+      client.println();
+      client.println("Not Found");
+    }
+
+    delay(1);
+    client.stop();
+  }
+}
