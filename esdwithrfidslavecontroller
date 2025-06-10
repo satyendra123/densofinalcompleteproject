@@ -34,11 +34,9 @@ unsigned long esdWindow = 20000;
 void setup() {
   Serial.begin(9600);
   rs485.begin(9600);
-
   pinMode(ESD_PIN, INPUT_PULLUP);
   pinMode(RS485_CONTROL, OUTPUT);
   digitalWrite(RS485_CONTROL, LOW);
-
   wg.begin(D0_PIN, D1_PIN);
   Serial.println("Wiegand + ESD + RS485 Ready");
 }
@@ -61,9 +59,7 @@ void loop() {
     if (digitalRead(ESD_PIN) == LOW && !esdPassed) {
       esdPassed = true;
       Serial.println("ESD Passed for RFID: " + lastRFID);
-
       delay(getStaticDelay(DEVICE_ID));
-
       sendToMaster(lastRFID);
       resetState();
     }
@@ -77,14 +73,11 @@ void loop() {
 
 void sendToMaster(String rfid) {
   String message = "|AA||";
-
   if (DEVICE_ID < 10) message += "0";
   message += String(DEVICE_ID);
-
   message += "||PASS||";
   message += rfid;
   message += "||FF|";
-
   sendViaRS485(message);
 }
 
