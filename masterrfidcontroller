@@ -1,3 +1,8 @@
+rs485         arduino
+DE_RE pin  -   6
+DI         -   4
+RO         -   5
+
 #include <SPI.h>
 #include <Ethernet.h>
 #include <SoftwareSerial.h>
