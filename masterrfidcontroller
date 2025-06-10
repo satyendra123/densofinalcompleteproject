@@ -48,10 +48,9 @@ void loop() {
       } else {
         Serial.println("Failed to extract RFID");
       }
-
       incomingData = "";
       while (rs485.available()) {
-        rs485.read(); // discard
+        rs485.read();
       }
     }
   }
@@ -81,23 +80,30 @@ String extractRFID(String data) {
   }
 }
 
+
 void sendToServer(String rfid) {
   if (client.connect(server, 8000)) {
-    Serial.println("Connected to server...");
-    String url = "GET /rfid-esd?rfid=" + rfid + " HTTP/1.1";
-    client.println(url);
+    Serial.println("Connected to server");
+    String jsonData = "{\"rfid_value\":\"" + rfid + "\", \"esd_discharge\": true}";
+    client.println("PUT /update-esd-value HTTP/1.1");
     client.println("Host: 192.168.1.100");
+    client.println("Content-Type: application/json");
+    client.print("Content-Length: ");
+    client.println(jsonData.length());
     client.println("Connection: close");
     client.println();
-    
-    delay(100);
-    while (client.available()) {
-      Serial.write(client.read());
+    client.println(jsonData);
+
+    while (client.connected()) {
+      if (client.available()) {
+        String line = client.readStringUntil('\n');
+        Serial.println(line);
+      }
     }
 
     client.stop();
-    Serial.println("\nData sent, connection closed");
+    Serial.println("Disconnected from server");
   } else {
-    Serial.println("Failed to connect to server.");
+    Serial.println("Connection to server failed");
   }
 }
