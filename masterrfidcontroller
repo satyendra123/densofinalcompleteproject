@@ -1,3 +1,12 @@
+RS485     arduino
+Rx    -   11
+Tx    -   10
+VCC   -   5v
+gnd   -   gnd
+
+
+
+//EX- it receives the data from all the 6 controller
 #include <SoftwareSerial.h>
 
 #define RX_PIN 11
