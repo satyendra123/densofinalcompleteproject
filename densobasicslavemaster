@@ -1,3 +1,4 @@
+//EX-1 this code is not working
 #include <SoftwareSerial.h>
 #include <Wiegand.h>
 
@@ -90,7 +91,7 @@ int getStaticDelay(byte deviceId) {
 }
 */
 
-// slave-2 for testing
+// slave-2 for testing and it is working
 /*
 #include <SoftwareSerial.h>
 #include <Wiegand.h>
