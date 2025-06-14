@@ -3,62 +3,62 @@
 #include <Wiegand.h>
 
 // Pin Definitions
-#define D0_PIN     2
-#define D1_PIN     3
-#define RS485_RX   11
-#define RS485_TX   10
-#define ESD_PIN    7
-#define DEVICE_ID  1
+#define D0_PIN     2         // Wiegand D0
+#define D1_PIN     3         // Wiegand D1
+#define RS485_RX   11        // RS485 receive
+#define RS485_TX   10        // RS485 transmit
+#define ESD_PIN    7         // ESD input pin
+#define DEVICE_ID  1         // Unique device ID
 
-SoftwareSerial Soft_Serial(RS485_RX, RS485_TX);
-WIEGAND wg;
+SoftwareSerial Soft_Serial(RS485_RX, RS485_TX);  // RS485 communication
+WIEGAND wg;                                       // Wiegand reader
 
 bool esdPassed = false;
 unsigned long rfidTime = 0;
-const unsigned long esdWindow = 20000;
+const unsigned long esdWindow = 20000;           // 20 seconds timeout
 String lastRFID = "";
 
 void setup() {
-  Serial.begin(115200);
-  Soft_Serial.begin(9600);
+  Serial.begin(115200);         // Debug serial
+  Soft_Serial.begin(9600);      // RS485 baud rate
 
-  pinMode(ESD_PIN, INPUT_PULLUP);
-  wg.begin(D0_PIN, D1_PIN);
+  pinMode(ESD_PIN, INPUT_PULLUP);  // ESD button/input
+  wg.begin(D0_PIN, D1_PIN);        // Initialize Wiegand
 
   Serial.println("Wiegand + ESD + RS485 Ready");
 }
 
 void loop() {
-
+  // RFID Read Section
   if (wg.available()) {
     uint32_t cardCode = wg.getCode();
-    lastRFID = 12345       //String(cardCode);
+    lastRFID = String(cardCode);
     rfidTime = millis();
     Serial.println("RFID Scanned: " + lastRFID);
   }
 
-  // Check ESD
-  if (!lastRFID.isEmpty() && millis() - rfidTime <= esdWindow) {
+  // Check ESD pass within time window
+  if (lastRFID != "" && millis() - rfidTime <= esdWindow) {
     if (digitalRead(ESD_PIN) == LOW && !esdPassed) {
       esdPassed = true;
       Serial.println("ESD Passed for RFID: " + lastRFID);
 
-      delay(getStaticDelay(DEVICE_ID));  // Optional static delay
-      sendToMaster(lastRFID);
-      resetState();
+      delay(getStaticDelay(DEVICE_ID));  // Optional device-specific delay
+      sendToMaster(lastRFID);            // Send to master
+      resetState();                      // Clear variables
     }
   }
 
   // Timeout check
-  if (!lastRFID.isEmpty() && millis() - rfidTime > esdWindow) {
+  if (lastRFID != "" && millis() - rfidTime > esdWindow) {
     Serial.println("ESD Timeout for RFID: " + lastRFID);
     resetState();
   }
 
-  delay(10);  // Faster loop
+  delay(10);  // Small delay to avoid tight loop
 }
 
-// Send message to master via RS485
+// Send data to master via RS485
 void sendToMaster(const String& rfid) {
   String message = "|AA||";
 
@@ -67,17 +67,18 @@ void sendToMaster(const String& rfid) {
 
   message += "||PASS||" + rfid + "||FF|";
 
-  Serial.println("Sending: " + message);
-  Soft_Serial.print(message);
+  Serial.println("Sending: " + message);    // Debug
+  Soft_Serial.print(message);               // Send via RS485
 }
 
-// Reset state after event
+// Reset all RFID + ESD states
 void resetState() {
   lastRFID = "";
   esdPassed = false;
   rfidTime = 0;
 }
 
+// Static delay based on device ID (used to avoid collision in RS485)
 int getStaticDelay(byte deviceId) {
   switch (deviceId) {
     case 0x01: return 50;
@@ -86,9 +87,10 @@ int getStaticDelay(byte deviceId) {
     case 0x04: return 200;
     case 0x05: return 250;
     case 0x06: return 300;
-    default: return 100;
+    default:   return 100;
   }
 }
+
 */
 
 // slave-2 for testing and it is working
