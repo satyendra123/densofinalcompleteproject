@@ -1,0 +1,70 @@
+// slave code
+#include <SoftwareSerial.h>
+
+#define RS485_TX 10
+#define RS485_RX 11
+#define ESD_PIN   7
+
+SoftwareSerial Soft_Serial(RS485_RX, RS485_TX);
+
+void setup() {
+  Serial.begin(115200);
+  Soft_Serial.begin(9600);
+  pinMode(ESD_PIN, INPUT_PULLUP);
+  Serial.println("\n\nWelcome to JP Learning");
+  Serial.println("Sender Start");
+}
+
+void loop() {
+
+  if (digitalRead(ESD_PIN) == LOW) {
+    Serial.println("ESD Passed. Sending LED ON Command...");
+    Soft_Serial.println("LED ON");
+  }
+
+  delay(50);
+}
+
+//master code
+#include <SoftwareSerial.h>
+
+#define RX_PIN 11
+#define TX_PIN 10
+#define LED_PIN 13
+
+SoftwareSerial Soft_Serial(RX_PIN, TX_PIN);
+
+String incomingCommand = "";
+
+void setup() {
+  Serial.begin(115200);
+  Soft_Serial.begin(9600);
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, LOW);
+
+  Serial.println("\n\nWelcome to JP Learning");
+  Serial.println("Receiver Start");
+}
+
+void loop() {
+  while (Soft_Serial.available()) {
+    char receivedChar = Soft_Serial.read();
+    Serial.print(receivedChar); // Print received character
+
+    // Build the command string
+    if (receivedChar != '*') {
+      incomingCommand += receivedChar;
+    } else {
+      Serial.println("\nCommand Received: " + incomingCommand);
+
+      if (incomingCommand == "LED ON") {
+        digitalWrite(LED_PIN, HIGH);
+        Serial.println("LED turned ON");
+      } else {
+        Serial.println("Unknown Command");
+      }
+
+      incomingCommand = "";
+    }
+  }
+}
