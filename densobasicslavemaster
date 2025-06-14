@@ -1,70 +1,183 @@
-// slave code
 #include <SoftwareSerial.h>
+#include <Wiegand.h>
 
-#define RS485_TX 10
-#define RS485_RX 11
-#define ESD_PIN   7
+// Pin Definitions
+#define D0_PIN     2
+#define D1_PIN     3
+#define RS485_RX   11
+#define RS485_TX   10
+#define ESD_PIN    7
+#define DEVICE_ID  1
 
 SoftwareSerial Soft_Serial(RS485_RX, RS485_TX);
+WIEGAND wg;
+
+bool esdPassed = false;
+unsigned long rfidTime = 0;
+const unsigned long esdWindow = 20000;
+String lastRFID = "";
 
 void setup() {
   Serial.begin(115200);
   Soft_Serial.begin(9600);
+
   pinMode(ESD_PIN, INPUT_PULLUP);
-  Serial.println("\n\nWelcome to JP Learning");
-  Serial.println("Sender Start");
+  wg.begin(D0_PIN, D1_PIN);
+
+  Serial.println("Wiegand + ESD + RS485 Ready");
 }
 
 void loop() {
 
-  if (digitalRead(ESD_PIN) == LOW) {
-    Serial.println("ESD Passed. Sending LED ON Command...");
-    Soft_Serial.println("LED ON");
+  if (wg.available()) {
+    uint32_t cardCode = wg.getCode();
+    lastRFID = 12345       //String(cardCode);
+    rfidTime = millis();
+    Serial.println("RFID Scanned: " + lastRFID);
   }
 
-  delay(50);
+  // Check ESD
+  if (!lastRFID.isEmpty() && millis() - rfidTime <= esdWindow) {
+    if (digitalRead(ESD_PIN) == LOW && !esdPassed) {
+      esdPassed = true;
+      Serial.println("ESD Passed for RFID: " + lastRFID);
+
+      delay(getStaticDelay(DEVICE_ID));  // Optional static delay
+      sendToMaster(lastRFID);
+      resetState();
+    }
+  }
+
+  // Timeout check
+  if (!lastRFID.isEmpty() && millis() - rfidTime > esdWindow) {
+    Serial.println("ESD Timeout for RFID: " + lastRFID);
+    resetState();
+  }
+
+  delay(10);  // Faster loop
 }
 
-//master code
+// Send message to master via RS485
+void sendToMaster(const String& rfid) {
+  String message = "|AA||";
+
+  if (DEVICE_ID < 10) message += "0";
+  message += String(DEVICE_ID);
+
+  message += "||PASS||" + rfid + "||FF|";
+
+  Serial.println("Sending: " + message);
+  Soft_Serial.print(message);
+}
+
+// Reset state after event
+void resetState() {
+  lastRFID = "";
+  esdPassed = false;
+  rfidTime = 0;
+}
+
+int getStaticDelay(byte deviceId) {
+  switch (deviceId) {
+    case 0x01: return 50;
+    case 0x02: return 100;
+    case 0x03: return 150;
+    case 0x04: return 200;
+    case 0x05: return 250;
+    case 0x06: return 300;
+    default: return 100;
+  }
+}
+*/
+
+// slave-2 for testing
+/*
 #include <SoftwareSerial.h>
+#include <Wiegand.h>
 
-#define RX_PIN 11
-#define TX_PIN 10
-#define LED_PIN 13
+// Pin Definitions
+#define D0_PIN     2
+#define D1_PIN     3
+#define RS485_RX   11
+#define RS485_TX   10
+#define ESD_PIN    7
+#define DEVICE_ID  1
 
-SoftwareSerial Soft_Serial(RX_PIN, TX_PIN);
+SoftwareSerial Soft_Serial(RS485_RX, RS485_TX);
+WIEGAND wg;
 
-String incomingCommand = "";
+bool esdPassed = false;
+unsigned long rfidTime = 0;
+const unsigned long esdWindow = 20000;
+String lastRFID = "";
+
+unsigned long lastSimTime = 0;
+const unsigned long simulateEvery = 5000;
 
 void setup() {
   Serial.begin(115200);
   Soft_Serial.begin(9600);
-  pinMode(LED_PIN, OUTPUT);
-  digitalWrite(LED_PIN, LOW);
 
-  Serial.println("\n\nWelcome to JP Learning");
-  Serial.println("Receiver Start");
+  pinMode(ESD_PIN, INPUT_PULLUP);
+  wg.begin(D0_PIN, D1_PIN);
+
+  Serial.println("Wiegand + ESD + RS485 Ready");
 }
 
 void loop() {
-  while (Soft_Serial.available()) {
-    char receivedChar = Soft_Serial.read();
-    Serial.print(receivedChar); // Print received character
 
-    // Build the command string
-    if (receivedChar != '*') {
-      incomingCommand += receivedChar;
-    } else {
-      Serial.println("\nCommand Received: " + incomingCommand);
+  if (millis() - lastSimTime > simulateEvery && lastRFID == "") {
+    lastSimTime = millis();
+    lastRFID = "1234561";
+    rfidTime = millis();
+    Serial.println("Simulated RFID Scanned: " + lastRFID);
+  }
 
-      if (incomingCommand == "LED ON") {
-        digitalWrite(LED_PIN, HIGH);
-        Serial.println("LED turned ON");
-      } else {
-        Serial.println("Unknown Command");
-      }
+  if (lastRFID != "" && millis() - rfidTime <= esdWindow) {
+    if (digitalRead(ESD_PIN) == LOW && !esdPassed) {
+      esdPassed = true;
+      Serial.println("ESD Passed for RFID: " + lastRFID);
 
-      incomingCommand = "";
+      delay(getStaticDelay(DEVICE_ID));
+      sendToMaster(lastRFID);
+      resetState();
     }
+  }
+
+  if (lastRFID != "" && millis() - rfidTime > esdWindow) {
+    Serial.println("ESD Timeout for RFID: " + lastRFID);
+    resetState();
+  }
+
+  delay(10);
+}
+
+void sendToMaster(const String& rfid) {
+  String message = "|AA||";
+
+  if (DEVICE_ID < 10) message += "0";
+  message += String(DEVICE_ID);
+
+  message += "||PASS||" + rfid + "||FF|";
+
+  Serial.println("Sending: " + message);
+  Soft_Serial.print(message);
+}
+
+void resetState() {
+  lastRFID = "";
+  esdPassed = false;
+  rfidTime = 0;
+}
+
+int getStaticDelay(byte deviceId) {
+  switch (deviceId) {
+    case 0x01: return 50;
+    case 0x02: return 100;
+    case 0x03: return 150;
+    case 0x04: return 200;
+    case 0x05: return 250;
+    case 0x06: return 300;
+    default:   return 100;
   }
 }
