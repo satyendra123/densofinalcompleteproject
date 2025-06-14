@@ -1,64 +1,49 @@
-circuit diagram => 
-  rs485       -    arduino
-RFID D0	      -       2
-RFID D1	      -       3
-RS485 RX (RO)	-       4
-RS485 TX (DI) -   	  5
-RS485 Control -    	  6
-ESD Pin       -       7
-W5500 CS	    -       10
-W5500 MOSI	  -       11
-W5500 MISO	  -       12
-W5500 SCK	    -       13
-
-#include <Wiegand.h>
 #include <SoftwareSerial.h>
+#include <Wiegand.h>
 
-#define D0_PIN 2
-#define D1_PIN 3
-#define ESD_PIN 7
-#define RS485_RX 4
-#define RS485_TX 5
-#define RS485_CONTROL 6
+// Pin Definitions
+#define D0_PIN     2
+#define D1_PIN     3
+#define RS485_RX   11
+#define RS485_TX   10
+#define ESD_PIN    7
+#define DEVICE_ID  1
 
-#define DEVICE_ID 0x01
-
-SoftwareSerial rs485(RS485_RX, RS485_TX);
+SoftwareSerial Soft_Serial(RS485_RX, RS485_TX);
 WIEGAND wg;
 
-String lastRFID = "";
 bool esdPassed = false;
 unsigned long rfidTime = 0;
-unsigned long esdWindow = 20000;
+const unsigned long esdWindow = 20000;
+String lastRFID = "";
+
+unsigned long lastSimTime = 0;
+const unsigned long simulateEvery = 5000;
 
 void setup() {
-  Serial.begin(9600);
-  rs485.begin(9600);
+  Serial.begin(115200);
+  Soft_Serial.begin(9600);
+
   pinMode(ESD_PIN, INPUT_PULLUP);
-  pinMode(RS485_CONTROL, OUTPUT);
-  digitalWrite(RS485_CONTROL, LOW);
   wg.begin(D0_PIN, D1_PIN);
+
   Serial.println("Wiegand + ESD + RS485 Ready");
 }
 
 void loop() {
-  if (rs485.available()) {
-    String received = rs485.readStringUntil('\n');
-    Serial.print("Received over RS485: ");
-    Serial.println(received);
-  }
 
-  if (wg.available()) {
-    uint32_t cardCode = wg.getCode();
-    lastRFID = String(cardCode);
+  if (millis() - lastSimTime > simulateEvery && lastRFID == "") {
+    lastSimTime = millis();
+    lastRFID = "1234561";
     rfidTime = millis();
-    Serial.println("RFID Scanned: " + lastRFID);
+    Serial.println("Simulated RFID Scanned: " + lastRFID);
   }
 
   if (lastRFID != "" && millis() - rfidTime <= esdWindow) {
     if (digitalRead(ESD_PIN) == LOW && !esdPassed) {
       esdPassed = true;
       Serial.println("ESD Passed for RFID: " + lastRFID);
+
       delay(getStaticDelay(DEVICE_ID));
       sendToMaster(lastRFID);
       resetState();
@@ -69,33 +54,20 @@ void loop() {
     Serial.println("ESD Timeout for RFID: " + lastRFID);
     resetState();
   }
+
+  delay(10);
 }
 
-void sendToMaster(String rfid) {
+void sendToMaster(const String& rfid) {
   String message = "|AA||";
+
   if (DEVICE_ID < 10) message += "0";
   message += String(DEVICE_ID);
-  message += "||PASS||";
-  message += rfid;
-  message += "||FF|";
-  sendViaRS485(message);
-}
 
-void sendViaRS485(String data) {
-  preTransmission();
-  rs485.print(data);
-  postTransmission();
-  Serial.println("Sent RS485: " + data);
-}
+  message += "||PASS||" + rfid + "||FF|";
 
-void preTransmission() {
-  digitalWrite(RS485_CONTROL, HIGH);
-  delayMicroseconds(10);
-}
-
-void postTransmission() {
-  delay(10);
-  digitalWrite(RS485_CONTROL, LOW);
+  Serial.println("Sending: " + message);
+  Soft_Serial.print(message);
 }
 
 void resetState() {
@@ -112,6 +84,6 @@ int getStaticDelay(byte deviceId) {
     case 0x04: return 200;
     case 0x05: return 250;
     case 0x06: return 300;
-    default: return 100;
+    default:   return 100;
   }
 }
