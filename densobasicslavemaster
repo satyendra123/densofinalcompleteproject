@@ -189,8 +189,8 @@ int getStaticDelay(byte deviceId) {
 /*
 #include <SoftwareSerial.h>
 
-#define RX_PIN 5
-#define TX_PIN 4
+#define RX_PIN 11
+#define TX_PIN 10
 #define LED_PIN 13
 
 SoftwareSerial Soft_Serial(RX_PIN, TX_PIN);
@@ -266,33 +266,6 @@ void parseMessage(String msg) {
     digitalWrite(LED_PIN, LOW);
   } else {
     Serial.println("Invalid/Unrecognized message.");
-  }
-}
-
-void sendToServer(String rfid) {
-  if (client.connect(server, 8000)) {
-    Serial.println("Connected to server");
-    String jsonData = "{\"rfid_value\":\"" + rfid + "\", \"esd_discharge\": true}";
-    client.println("PUT /update-esd-value HTTP/1.1");
-    client.println("Host: 192.168.1.21");
-    client.println("Content-Type: application/json");
-    client.print("Content-Length: ");
-    client.println(jsonData.length());
-    client.println("Connection: close");
-    client.println();
-    client.println(jsonData);
-
-    while (client.connected()) {
-      if (client.available()) {
-        String line = client.readStringUntil('\n');
-        Serial.println(line);
-      }
-    }
-
-    client.stop();
-    Serial.println("Disconnected from server");
-  } else {
-    Serial.println("Connection to server failed");
   }
 }
 */
