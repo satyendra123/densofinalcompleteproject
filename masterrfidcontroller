@@ -1,6 +1,6 @@
 RS485     arduino
-Rx    -   11
-Tx    -   10
+Rx    -   5
+Tx    -   4
 VCC   -   5v
 gnd   -   gnd
 
