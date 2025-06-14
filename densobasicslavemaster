@@ -1,4 +1,5 @@
-//EX-1 this code is not working
+//slave code
+/* working slave-1
 #include <SoftwareSerial.h>
 #include <Wiegand.h>
 
@@ -90,10 +91,9 @@ int getStaticDelay(byte deviceId) {
     default:   return 100;
   }
 }
-
 */
 
-// slave-2 for testing and it is working
+// slave-2 working for testing
 /*
 #include <SoftwareSerial.h>
 #include <Wiegand.h>
@@ -184,3 +184,115 @@ int getStaticDelay(byte deviceId) {
     default:   return 100;
   }
 }
+*/
+// master code
+/*
+#include <SoftwareSerial.h>
+
+#define RX_PIN 5
+#define TX_PIN 4
+#define LED_PIN 13
+
+SoftwareSerial Soft_Serial(RX_PIN, TX_PIN);
+
+String incomingData = "";
+
+void setup() {
+  Serial.begin(115200);
+  Soft_Serial.begin(9600);
+
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, LOW);
+
+  Serial.println("\n\nMaster Ready");
+}
+
+void loop() {
+  while (Soft_Serial.available()) {
+    char receivedChar = Soft_Serial.read();
+    incomingData += receivedChar;
+
+    // Check for end delimiter
+    if (receivedChar == '|') {
+      if (incomingData.endsWith("||FF|")) {
+        Serial.println("\n--- Full Message Received ---");
+        Serial.println("Raw: " + incomingData);
+        parseMessage(incomingData);
+        incomingData = "";
+      }
+    }
+
+    // Prevent garbage buildup
+    if (incomingData.length() > 100) {
+      incomingData = "";
+    }
+  }
+}
+
+void parseMessage(String msg) {
+  // Expected format: |AA||01||PASS||1234561||FF|
+  // Split message based on delimiter "||"
+  int partIndex = 0;
+  String parts[6];
+
+  int fromIndex = 0;
+  while (fromIndex < msg.length() && partIndex < 6) {
+    int start = msg.indexOf("||", fromIndex);
+    if (start == -1) break;
+
+    int end = msg.indexOf("||", start + 2);
+    if (end == -1) end = msg.indexOf("||", start + 2); // try again
+
+    parts[partIndex++] = msg.substring(fromIndex, start);
+    fromIndex = start + 2;
+  }
+
+  // Extract useful info (fallback if parsing is inconsistent)
+  if (msg.indexOf("PASS") != -1) {
+    int idStart = msg.indexOf("||") + 2;
+    int idEnd = msg.indexOf("||", idStart);
+    String deviceId = msg.substring(idStart, idEnd);
+
+    int rfidStart = msg.indexOf("||PASS||") + 8;
+    int rfidEnd = msg.indexOf("||", rfidStart);
+    String rfid = msg.substring(rfidStart, rfidEnd);
+
+    Serial.println("Device ID: " + deviceId);
+    Serial.println("RFID: " + rfid);
+
+    // Example action: Turn on LED briefly
+    digitalWrite(LED_PIN, HIGH);
+    delay(300);
+    digitalWrite(LED_PIN, LOW);
+  } else {
+    Serial.println("Invalid/Unrecognized message.");
+  }
+}
+
+void sendToServer(String rfid) {
+  if (client.connect(server, 8000)) {
+    Serial.println("Connected to server");
+    String jsonData = "{\"rfid_value\":\"" + rfid + "\", \"esd_discharge\": true}";
+    client.println("PUT /update-esd-value HTTP/1.1");
+    client.println("Host: 192.168.1.21");
+    client.println("Content-Type: application/json");
+    client.print("Content-Length: ");
+    client.println(jsonData.length());
+    client.println("Connection: close");
+    client.println();
+    client.println(jsonData);
+
+    while (client.connected()) {
+      if (client.available()) {
+        String line = client.readStringUntil('\n');
+        Serial.println(line);
+      }
+    }
+
+    client.stop();
+    Serial.println("Disconnected from server");
+  } else {
+    Serial.println("Connection to server failed");
+  }
+}
+*/
