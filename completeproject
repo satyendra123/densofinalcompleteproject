@@ -44,9 +44,9 @@ void loop() {
       esdPassed = true;
       Serial.println("ESD Passed for RFID: " + lastRFID);
 
-      delay(getStaticDelay(DEVICE_ID));  // Optional device-specific delay
-      sendToMaster(lastRFID);            // Send to master
-      resetState();                      // Clear variables
+      delay(getStaticDelay(DEVICE_ID));
+      sendToMaster(lastRFID);
+      resetState();
     }
   }
 
@@ -93,100 +93,8 @@ int getStaticDelay(byte deviceId) {
 }
 */
 
-// slave-2 working for testing
-/*
-#include <SoftwareSerial.h>
-#include <Wiegand.h>
-
-// Pin Definitions
-#define D0_PIN     2
-#define D1_PIN     3
-#define RS485_RX   11
-#define RS485_TX   10
-#define ESD_PIN    7
-#define DEVICE_ID  1
-
-SoftwareSerial Soft_Serial(RS485_RX, RS485_TX);
-WIEGAND wg;
-
-bool esdPassed = false;
-unsigned long rfidTime = 0;
-const unsigned long esdWindow = 20000;
-String lastRFID = "";
-
-unsigned long lastSimTime = 0;
-const unsigned long simulateEvery = 5000;
-
-void setup() {
-  Serial.begin(115200);
-  Soft_Serial.begin(9600);
-
-  pinMode(ESD_PIN, INPUT_PULLUP);
-  wg.begin(D0_PIN, D1_PIN);
-
-  Serial.println("Wiegand + ESD + RS485 Ready");
-}
-
-void loop() {
-
-  if (millis() - lastSimTime > simulateEvery && lastRFID == "") {
-    lastSimTime = millis();
-    lastRFID = "1234561";
-    rfidTime = millis();
-    Serial.println("Simulated RFID Scanned: " + lastRFID);
-  }
-
-  if (lastRFID != "" && millis() - rfidTime <= esdWindow) {
-    if (digitalRead(ESD_PIN) == LOW && !esdPassed) {
-      esdPassed = true;
-      Serial.println("ESD Passed for RFID: " + lastRFID);
-
-      delay(getStaticDelay(DEVICE_ID));
-      sendToMaster(lastRFID);
-      resetState();
-    }
-  }
-
-  if (lastRFID != "" && millis() - rfidTime > esdWindow) {
-    Serial.println("ESD Timeout for RFID: " + lastRFID);
-    resetState();
-  }
-
-  delay(10);
-}
-
-void sendToMaster(const String& rfid) {
-  String message = "|AA||";
-
-  if (DEVICE_ID < 10) message += "0";
-  message += String(DEVICE_ID);
-
-  message += "||PASS||" + rfid + "||FF|";
-
-  Serial.println("Sending: " + message);
-  Soft_Serial.print(message);
-}
-
-void resetState() {
-  lastRFID = "";
-  esdPassed = false;
-  rfidTime = 0;
-}
-
-int getStaticDelay(byte deviceId) {
-  switch (deviceId) {
-    case 0x01: return 50;
-    case 0x02: return 100;
-    case 0x03: return 150;
-    case 0x04: return 200;
-    case 0x05: return 250;
-    case 0x06: return 300;
-    default:   return 100;
-  }
-}
-*/
 // master code and it is working. it receives the data from the slave controller
-/*
+
 #include <SoftwareSerial.h>
 #include <SPI.h>
 #include <Ethernet.h>
@@ -302,8 +210,6 @@ void sendToServer(String rfid) {
 }
 
 
-*/
-
 
 // working turnstile controller
 /*
@@ -312,8 +218,8 @@ void sendToServer(String rfid) {
 #include <Wiegand.h>
 
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0x02 };
-IPAddress ip(192, 168, 1, 156);
-IPAddress serverIp(192, 168, 1, 21);
+IPAddress ip(192, 168, 1, 159);
+IPAddress serverIp(192, 168, 1, 10);
 
 const int RELAY_PIN = 9;
 
@@ -367,7 +273,7 @@ void sendRFIDToServer(String rfid) {
   if (client.connect(serverIp, 8000)) {
     String url = "GET /get-boom-value/" + rfid + " HTTP/1.1";
     client.println(url);
-    client.println("Host: 192.168.1.21");
+    client.println("Host: 192.168.1.10");
     client.println("Connection: close");
     client.println();
 
