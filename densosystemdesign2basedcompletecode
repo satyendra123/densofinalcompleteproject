@@ -1,0 +1,339 @@
+// slave controller
+
+#include <SoftwareSerial.h>
+#include <Wiegand.h>
+
+#define D0_PIN     2
+#define D1_PIN     3
+#define RS485_RX   11
+#define RS485_TX   10
+#define ESD_PIN    7
+#define DEVICE_ID  1
+
+SoftwareSerial Soft_Serial(RS485_RX, RS485_TX);
+WIEGAND wg;
+
+bool esdPassed = false;
+unsigned long rfidTime = 0;
+const unsigned long esdWindow = 20000;
+String lastRFID = "";
+
+void setup() {
+  Serial.begin(115200);
+  Soft_Serial.begin(9600);
+
+  pinMode(ESD_PIN, INPUT_PULLUP);
+  wg.begin(D0_PIN, D1_PIN);
+
+  Serial.println("Wiegand + ESD + RS485 Ready");
+}
+
+void loop() {
+  if (wg.available()) {
+    uint32_t cardCode = wg.getCode();
+    lastRFID = String(cardCode);
+    rfidTime = millis();
+    Serial.println("RFID Scanned: " + lastRFID);
+  }
+
+  if (lastRFID != "" && millis() - rfidTime <= esdWindow) {
+    if (digitalRead(ESD_PIN) == LOW && !esdPassed) {
+      esdPassed = true;
+      Serial.println("ESD Passed for RFID: " + lastRFID);
+
+      delay(getStaticDelay(DEVICE_ID));
+      sendToMaster(lastRFID);
+      resetState();
+    }
+  }
+
+  if (lastRFID != "" && millis() - rfidTime > esdWindow) {
+    Serial.println("ESD Timeout for RFID: " + lastRFID);
+    resetState();
+  }
+
+  delay(10);
+}
+
+void sendToMaster(const String& rfid) {
+  String message = "|AA||";
+
+  if (DEVICE_ID < 10) message += "0";
+  message += String(DEVICE_ID);
+
+  message += "||PASS||" + rfid + "||FF|";
+
+  Serial.println("Sending: " + message);
+  Soft_Serial.print(message);
+}
+
+void resetState() {
+  lastRFID = "";
+  esdPassed = false;
+  rfidTime = 0;
+}
+
+int getStaticDelay(byte deviceId) {
+  switch (deviceId) {
+    case 0x01: return 50;
+    case 0x02: return 100;
+    case 0x03: return 150;
+    case 0x04: return 200;
+    case 0x05: return 250;
+    case 0x06: return 300;
+    default:   return 100;
+  }
+}
+
+// ===================== MASTER CONTROLLER =====================
+#include <SoftwareSerial.h>
+#include <SPI.h>
+#include <Ethernet.h>
+
+// RS485 Communication Pins
+#define RS485_SLAVE_RX 4
+#define RS485_SLAVE_TX 5
+#define RS485_TURN_RX 6
+#define RS485_TURN_TX 7
+
+SoftwareSerial rs485_slave(RS485_SLAVE_RX, RS485_SLAVE_TX);  // From 6 slaves
+SoftwareSerial rs485_turn(RS485_TURN_RX, RS485_TURN_TX);     // To/from turnstiles
+
+EthernetClient client;
+byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0x01 };
+IPAddress ip(192, 168, 1, 158);       // Master IP
+IPAddress server(192, 168, 1, 10);    // Server IP
+
+String slaveBuffer = "";
+String turnBuffer = "";
+
+struct EsdPass {
+  String rfid;
+  unsigned long timestamp;
+};
+EsdPass recent[10];
+int recentIndex = 0;
+
+void setup() {
+  Serial.begin(115200);
+  rs485_slave.begin(9600);
+  rs485_turn.begin(9600);
+  Ethernet.begin(mac, ip);
+  delay(1000);
+  Serial.println("Master Ready");
+
+  fetchRFIDsFromServerAndSync();  // Sync RFIDs on startup
+}
+
+void loop() {
+  // Handle data from RFID+ESD slaves
+  while (rs485_slave.available()) {
+    char c = rs485_slave.read();
+    slaveBuffer += c;
+    if (slaveBuffer.endsWith("||FF|")) {
+      parseSlave(slaveBuffer);
+      slaveBuffer = "";
+    }
+  }
+
+  // Handle data from turnstiles
+  while (rs485_turn.available()) {
+    char c = rs485_turn.read();
+    turnBuffer += c;
+    if (turnBuffer.endsWith("||")) {
+      parseTurnstile(turnBuffer);
+      turnBuffer = "";
+    }
+  }
+}
+
+void parseSlave(String msg) {
+  if (msg.indexOf("PASS") != -1) {
+    String rfid = msg.substring(msg.indexOf("||PASS||") + 8, msg.lastIndexOf("||"));
+    recent[recentIndex] = {rfid, millis()};
+    recentIndex = (recentIndex + 1) % 10;
+    sendToServer(rfid, true);
+    Serial.println("[SLAVE] ESD PASS: " + rfid);
+  }
+}
+
+void parseTurnstile(String msg) {
+  if (msg.indexOf("CHECKESD") != -1) {
+    int r1 = msg.indexOf("||") + 2;
+    int r2 = msg.indexOf("||", r1);
+    int z1 = msg.indexOf("||", r2 + 2) + 2;
+    int z2 = msg.indexOf("||", z1);
+
+    String rfid = msg.substring(r1, r2);
+    String zone = msg.substring(z1, z2);
+
+    bool passed = false;
+    for (int i = 0; i < 10; i++) {
+      if (recent[i].rfid == rfid && millis() - recent[i].timestamp < 120000) {
+        passed = true;
+        break;
+      }
+    }
+
+    if (passed) {
+      rs485_turn.print("|OPENEN%||" + rfid + "||" + zone + "||");
+      sendToServer(rfid, true);
+      Serial.println("[TURNSTILE] Gate OPEN for " + rfid);
+    } else {
+      sendToServer(rfid, false);
+      Serial.println("[TURNSTILE] ESD not passed for " + rfid);
+    }
+  }
+}
+
+// Sync all registered RFIDs to both turnstiles (zone 1 and zone 2)
+void fetchRFIDsFromServerAndSync() {
+  if (client.connect(server, 8000)) {
+    client.println("GET /get-registered-rfids HTTP/1.1");
+    client.println("Host: 192.168.1.10");
+    client.println("Connection: close");
+    client.println();
+
+    String response = "";
+    unsigned long timeout = millis();
+    while (client.connected() && millis() - timeout < 3000) {
+      while (client.available()) {
+        char c = client.read();
+        response += c;
+      }
+    }
+    client.stop();
+
+    // Extract JSON array manually (e.g., ["123456","987654"])
+    int start = response.indexOf('[');
+    int end = response.indexOf(']');
+    if (start == -1 || end == -1 || end <= start) {
+      Serial.println("Invalid JSON format");
+      return;
+    }
+
+    String jsonList = response.substring(start + 1, end);
+    jsonList.replace("\"", "");  // remove quotes
+    jsonList.trim();
+
+    while (jsonList.length() > 0) {
+      int commaIndex = jsonList.indexOf(',');
+      String rfid;
+      if (commaIndex == -1) {
+        rfid = jsonList;
+        jsonList = "";
+      } else {
+        rfid = jsonList.substring(0, commaIndex);
+        jsonList = jsonList.substring(commaIndex + 1);
+      }
+
+      rfid.trim();
+      if (rfid.length() > 0) {
+        rs485_turn.print("|SYNC||" + rfid + "||1||");
+        delay(100);
+        rs485_turn.print("|SYNC||" + rfid + "||2||");
+        delay(100);
+        Serial.println("SYNCED: " + rfid);
+      }
+    }
+
+    Serial.println("All RFIDs synced to turnstiles.");
+  } else {
+    Serial.println("Failed to connect to server for RFID sync.");
+  }
+}
+
+void sendToServer(String rfid, bool opened) {
+  if (client.connect(server, 8000)) {
+    String payload = "{\"rfid\":\"" + rfid + "\",\"gate_opened\":" + (opened ? "true" : "false") + "}";
+
+    client.println("POST /log-access HTTP/1.1");
+    client.println("Host: 192.168.1.10");
+    client.println("Content-Type: application/json");
+    client.print("Content-Length: ");
+    client.println(payload.length());
+    client.println();
+    client.println(payload);
+
+    client.stop();
+    Serial.println("Access log sent: " + payload);
+  } else {
+    Serial.println("Connection to server failed.");
+  }
+}
+
+
+// ===================== TURNSTILE CONTROLLER =====================
+#include <SoftwareSerial.h>
+#include <Wiegand.h>
+#include <EEPROM.h>
+
+#define D0_PIN 2
+#define D1_PIN 3
+#define RELAY_PIN 9
+#define RS485_RX 10
+#define RS485_TX 11
+#define ZONE_ID "01"
+
+WIEGAND wg;
+SoftwareSerial rs485(RS485_RX, RS485_TX);
+String buffer = "";
+
+void setup() {
+  Serial.begin(9600);
+  wg.begin(D0_PIN, D1_PIN);
+  rs485.begin(9600);
+  pinMode(RELAY_PIN, OUTPUT);
+  digitalWrite(RELAY_PIN, HIGH);
+  Serial.println("Turnstile Ready");
+}
+
+void loop() {
+  if (wg.available()) {
+    String rfid = String(wg.getCode());
+    if (isRegistered(rfid)) {
+      rs485.print("|CHECKESD||" + rfid + "||" + ZONE_ID + "||");
+    } else {
+      Serial.println("Unregistered RFID: " + rfid);
+    }
+  }
+
+  while (rs485.available()) {
+    char c = rs485.read();
+    buffer += c;
+    if (buffer.endsWith("||")) {
+      if (buffer.startsWith("|OPENEN%||")) {
+        int start = buffer.indexOf("||") + 2;
+        int end = buffer.indexOf("||", start);
+        String rfid = buffer.substring(start, end);
+        int zStart = buffer.indexOf("||", end + 2) + 2;
+        int zEnd = buffer.indexOf("||", zStart);
+        String zone = buffer.substring(zStart, zEnd);
+
+        if (zone == ZONE_ID && isRegistered(rfid)) {
+          openGate();
+        }
+      }
+      buffer = "";
+    }
+  }
+}
+
+bool isRegistered(String rfid) {
+  int count = EEPROM.read(0);
+  for (int i = 0; i < count; i++) {
+    String stored = "";
+    for (int j = 0; j < 10; j++) {
+      stored += char(EEPROM.read(1 + i * 10 + j));
+    }
+    if (stored == rfid) return true;
+  }
+  return false;
+}
+
+void openGate() {
+  Serial.println("Gate Opening...");
+  digitalWrite(RELAY_PIN, LOW);
+  delay(500);
+  digitalWrite(RELAY_PIN, HIGH);
+}
