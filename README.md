@@ -46,8 +46,11 @@ run_server.py
 how to setup django backened code in services so that it runs in the background
 
 step-1 we have the backened exe
-step-2 after making the backened exe i want to make the services of this exe so to make it
+step-2 after making the backened exe i want to make the services of this exe so to make it. open the cmd in the administrator
 a) nssm install MyPythonService
 b) so one gui is open then i will select the my exe and write the services name densobackenedservices now i need to make the start the services
 c) nssm start densobackenedservices
+d) for stop the services sc stop densobackenedservices
+e) for deleting the services sc delete densobackenedservices
+
 
