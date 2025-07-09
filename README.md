@@ -53,4 +53,7 @@ c) nssm start densobackenedservices
 d) for stop the services sc stop densobackenedservices
 e) for deleting the services sc delete densobackenedservices
 
+so backened services is done and also working
 
+
+2) not make the services for the frotened
