@@ -14,12 +14,38 @@ cd C:\xampp\apache\bin
 httpd.exe -k install -n "ApacheXAMPP"
 net start ApacheXAMPP
 
-how to setup
-1)
-backened django exe.
-step-1) make the run_server.py code 
 
+Note- make the exe of you backned
+1) make one file named run_server.py and put this code
+# run_server.py
+from waitress import serve
+from denso.wsgi import application
+import logging
+print("🔧 Starting Waitress server on http://0.0.0.0:8000")
+# Optional: enable Waitress logs
+logging.basicConfig(level=logging.INFO)
+serve(application, host='0.0.0.0', port=8000)
 
+1) venv\Scripts\activate
+2) make the exe
+pyinstaller --onefile --noconsole ^
+--hidden-import=authentication ^
+--hidden-import=authentication.apps ^
+--hidden-import=authentication.urls ^
+--hidden-import=rfid_esd ^
+--hidden-import=rfid_esd.apps ^
+--hidden-import=rfid_esd.urls ^
+--hidden-import=dj_rest_auth ^
+--hidden-import=dj_rest_auth.registration ^
+--hidden-import=allauth ^
+--hidden-import=allauth.account ^
+--hidden-import=allauth.socialaccount ^
+--hidden-import=rest_framework ^
+run_server.py
+
+how to setup django backened code in services so that it runs in the background
+
+step-1 we have the backened exe
 step-2 after making the backened exe i want to make the services of this exe so to make it
 a) nssm install MyPythonService
 b) so one gui is open then i will select the my exe and write the services name densobackenedservices now i need to make the start the services
