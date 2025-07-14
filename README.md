@@ -1,4 +1,4 @@
-Note- open the cmd in the administrator and run this E:\nssm-2.24\nssm-2.24\win64\nssm.exe install
+Note- open the cmd in the administrator and run this E:\nssm-2.24\nssm-2.24\win64\nssm.exe install it will open the gui. just select the exe whose services you want to make
 
 
 
