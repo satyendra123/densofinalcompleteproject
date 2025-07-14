@@ -106,14 +106,37 @@ step-5) agar hume client ka image se exe banani hai to hum wo bhi kar sakte hai
 step-6) isko run krne ke liye dist folder chahiye aur dist folder ke bahar ye meri exe hono chahiye tbhi ye exe jo hai dist folder me jo files hai unko serve karti hai browser me means ki meri website ko, aur mera package.json file bhi hona chahiye dependency ke liye. so agar mujhe kisi client ke pc me ye chiz dalni hai to mere pass dist folder, exe aur package.json file hona chahiye
 
 b)
-not make the services for the frotened when made by the vite.
-i have made paramount controller for controlling the barrier
+not make the services for the frotened when made by the create react app.
 
 frontened ka exe kaise banate hai. so hum windows ke exe ke liye electron ka use karte hai. lekin agar hum chahte hai ki mera ek exe ho jisse mera frontened windows me open na hokar browser me open ho to mujhe ye chiz apply karni padegi.
 
 step-0) npm install -g pkg step-1) npm install serve-handler step-2) sabse pahle ek server.js ke name se file banao. jo ki main project ke andar ye file rahegi.
 
-const { exec } = require('child_process'); exec('npx serve -s dist -l 3000'); exec('start http://localhost:3000');
+step-3) server.js
+const { spawn } = require("child_process");
+const open = require("open");
+
+const server = spawn("npx", ["serve", "-s", "build", "-l", "3000"], {
+  shell: true,
+  stdio: "pipe",
+});
+
+server.stdout.on("data", (data) => {
+  const output = data.toString();
+  console.log([stdout] ${output});
+
+  if (output.includes("Accepting connections at")) {
+    open("http://localhost:3000");
+  }
+});
+
+server.stderr.on("data", (data) => {
+  console.error([stderr] ${data});
+});
+
+server.on("close", (code) => {
+  console.log(Child process exited with code ${code});
+});
 
 step-3) run the npm run build.
 
