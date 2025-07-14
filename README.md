@@ -197,3 +197,8 @@ server.listen(3000, () => {
   exec("start http://localhost:3000");
 });
 
+Note- c sharp me jo exe hai usse agar hume services banana hai to hume simply cmd ko administrator me chalana hai aur ye likhna hai
+a) for creating the services-     sc create MyTestService binPath= "C:\Services\MyService.exe"
+b) for stopping the services-     sc stop MyTestService
+c) for deleting the services-     sc delete MyTestService
+
