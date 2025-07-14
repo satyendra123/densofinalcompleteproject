@@ -34,7 +34,7 @@ print("🔧 Starting Waitress server on http://0.0.0.0:8000")
 logging.basicConfig(level=logging.INFO)
 serve(application, host='0.0.0.0', port=8000)
 
-run_server.py another one if the first one is not working
+# run_server.py another one if the first one is not working
 import logging
 import traceback
 from waitress import serve
@@ -59,7 +59,6 @@ except Exception as e:
     print("❌ Server crashed! Check server.log")
 
 
-
 1) venv\Scripts\activate
 2) make the exe
 pyinstaller --onefile --noconsole ^
@@ -81,7 +80,7 @@ how to setup django backened code in services so that it runs in the background
 
 step-1 we have the backened exe
 step-2 after making the backened exe i want to make the services of this exe so to make it. open the cmd in the administrator
-a) nssm install MyPythonService
+a) nssm install MyPythonService or E:\nssm-2.24\nssm-2.24\win64\nssm.exe install (yeh hum tb chalayenge jab humara nssm.exe kisi folder ke andar hoga)
 b) so one gui is open then i will select the my exe and write the services name densobackenedservices now i need to make the start the services
 c) nssm start densobackenedservices
 d) for stop the services sc stop densobackenedservices
@@ -89,11 +88,9 @@ e) for deleting the services sc delete densobackenedservices
 
 so backened services is done and also working
 
-
 2)
 a) not make the services for the frotened when made by the vite.
 i have made paramount controller for controlling the barrier
-
 frontened ka exe kaise banate hai. so hum windows ke exe ke liye electron ka use karte hai. lekin agar hum chahte hai ki mera ek exe ho jisse mera frontened windows me open na hokar browser me open ho to mujhe ye chiz apply karni padegi.
 
 step-0) npm install -g pkg step-1) npm install serve-handler step-2) sabse pahle ek server.js ke name se file banao. jo ki main project ke andar ye file rahegi.
