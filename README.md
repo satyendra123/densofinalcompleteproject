@@ -22,9 +22,34 @@ from waitress import serve
 from denso.wsgi import application
 import logging
 print("🔧 Starting Waitress server on http://0.0.0.0:8000")
-# Optional: enable Waitress logs
 logging.basicConfig(level=logging.INFO)
 serve(application, host='0.0.0.0', port=8000)
+
+run_server.py another one if the first one is not working
+import logging
+import traceback
+from waitress import serve
+from anpr_backened.wsgi import application
+
+# Log to file
+logging.basicConfig(
+    filename="server.log",
+    filemode="w",
+    level=logging.DEBUG,
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
+
+print("🔧 Starting Waitress server on http://0.0.0.0:8000")
+logging.info("Starting Waitress server...")
+
+try:
+    serve(application, host='0.0.0.0', port=8000)
+except Exception as e:
+    logging.error("❌ Exception occurred while running server:")
+    logging.error(traceback.format_exc())
+    print("❌ Server crashed! Check server.log")
+
+
 
 1) venv\Scripts\activate
 2) make the exe
