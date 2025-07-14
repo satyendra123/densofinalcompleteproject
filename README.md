@@ -1,7 +1,5 @@
 Note- open the cmd in the administrator and run this E:\nssm-2.24\nssm-2.24\win64\nssm.exe install it will open the gui. just select the exe whose services you want to make
 
-
-
 # densofinalcompleteproject
 we have made the complete denso project with rfid
 
@@ -14,19 +12,17 @@ net stop MySQL          :: Stop MySQL service
 sc delete MySQL         :: Delete the MySQL service (be careful)
 
 step-2) run apache as a services
-cd C:\xampp\apache\bin
-httpd.exe -k install -n "ApacheXAMPP"
+cd C:\xampp\apache\bin httpd.exe -k install -n "ApacheXAMPP"
 net start ApacheXAMPP
 
 or other method to do it
 1) for mysql
-cd C:\xampp\mysql\bin
-mysqld.exe --install MySQL
+cd C:\xampp\mysql\bin mysqld.exe --install MySQL
+net start MySQL
 
-2) for apache
-cd C:\xampp\apache\bin
-httpd.exe -k install -n "Apache2.4"
-
+3) for apache
+cd C:\xampp\apache\bin httpd.exe -k install -n "Apache2.4"
+net start Apache2.4
 
 Note- make the exe of you backned
 1) make one file named run_server.py and put this code
