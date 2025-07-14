@@ -145,3 +145,55 @@ step-4) pkg server.js --targets node18-win-x64 --output SaralaxeIndia.exe
 step-5) agar hume client ka image se exe banani hai to hum wo bhi kar sakte hai
 
 step-6) isko run krne ke liye dist folder chahiye aur dist folder ke bahar ye meri exe hono chahiye tbhi ye exe jo hai dist folder me jo files hai unko serve karti hai browser me means ki meri website ko, aur mera package.json file bhi hona chahiye dependency ke liye. so agar mujhe kisi client ke pc me ye chiz dalni hai to mere pass dist folder, exe aur package.json file hona chahiye
+
+3rd way to make the exe without using the dist folder. above me frontend ke humne jo bhi ways dekhe hai usme hume dist folder ko rakhna padta hai. lekin agar mai chahta hu ki mujhe dist folder ke bina hi mera exe chale to mai simply server.js me ye wala code run karunga. aur baki ke sabhi approach same hi rhenge
+server.js
+// server.js
+const http = require("http");
+const path = require("path");
+const fs = require("fs");
+const { exec } = require("child_process");
+
+// Helper: Get content type
+function getContentType(filePath) {
+  const ext = path.extname(filePath);
+  if (ext === ".js") return "application/javascript";
+  if (ext === ".css") return "text/css";
+  if (ext === ".html") return "text/html";
+  if (ext === ".json") return "application/json";
+  if (ext === ".ico") return "image/x-icon";
+  if (ext === ".png") return "image/png";
+  return "text/plain";
+}
+
+// Serve files from virtual memory (pkg embeds dist folder)
+const baseDir = path.join(__dirname, "dist");
+
+const server = http.createServer((req, res) => {
+  const reqPath = req.url === "/" ? "/index.html" : req.url;
+  const filePath = path.join(baseDir, reqPath);
+
+  fs.readFile(filePath, (err, data) => {
+    if (err) {
+      // SPA fallback
+      fs.readFile(path.join(baseDir, "index.html"), (err, fallback) => {
+        if (err) {
+          res.writeHead(404);
+          res.end("404 Not Found");
+        } else {
+          res.writeHead(200, { "Content-Type": "text/html" });
+          res.end(fallback);
+        }
+      });
+    } else {
+      res.writeHead(200, { "Content-Type": getContentType(filePath) });
+      res.end(data);
+    }
+  });
+});
+
+server.listen(3000, () => {
+  console.log("Server running at http://localhost:3000");
+  exec("start http://localhost:3000");
+});
+
