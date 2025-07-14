@@ -1,3 +1,7 @@
+Note- open the cmd in the administrator and run this E:\nssm-2.24\nssm-2.24\win64\nssm.exe install
+
+
+
 # densofinalcompleteproject
 we have made the complete denso project with rfid
 
