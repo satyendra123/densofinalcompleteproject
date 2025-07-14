@@ -14,6 +14,15 @@ cd C:\xampp\apache\bin
 httpd.exe -k install -n "ApacheXAMPP"
 net start ApacheXAMPP
 
+or other method to do it
+1) for mysql
+cd C:\xampp\mysql\bin
+mysqld.exe --install MySQL
+
+2) for apache
+cd C:\xampp\apache\bin
+httpd.exe -k install -n "Apache2.4"
+
 
 Note- make the exe of you backned
 1) make one file named run_server.py and put this code
