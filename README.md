@@ -137,7 +137,7 @@ server.stderr.on("data", (data) => {
 });
 
 server.on("close", (code) => {
-  console.log(Child process exited with code ${code});
+  console.log("Child process exited with code ${code}");
 });
 
 step-3) run the npm run build.
